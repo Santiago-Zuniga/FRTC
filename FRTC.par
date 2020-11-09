@@ -1,0 +1,68 @@
+#
+# nek parameter file for Spatially Evolving TCs
+#
+
+[GENERAL]
+#startFrom = FRONT.ini 
+stopAt = endTime
+endTime = 4.2
+#stopAt = numSteps
+#numSteps = 100
+
+dt = 1.5e-3
+timeStepper = bdf2
+extrapolation = OIFS
+variableDt = no
+targetCFL = 2.5
+
+writeControl = runTime
+writeInterval = 1.5
+
+filtering = explicit
+filterWeight = 0.95
+filterModes=3
+#filterCutoffRatio = 0.65
+
+# Simulation parameters ----------------------------------------
+userParam01 = 20        # Ri_tau
+userParam02 = 20        # Ri_tau2 (downstream from the break in slope). The mesh is not deformed is if it's equal to Ri_tau
+userParam03 = 0.01      # Settling velocity, absolute value
+userParam04 = 0.001     # Nondimensional particle diameter
+userParam05 = -0.1      # u_target for top PML, positive. If negative, a constant velocity will be used instead of a PML. If 0, it uses the average entrainment velocity
+userParam06 = 2         # Bottom concentration BC. 0->depositional 1->bypass 2->Erosion
+userParam07 = 5         # duration of inflow flow
+userParam08 = 20.0      # y lenght (height)
+userParam09 = 34.0	    # z lenght / pi
+
+# I/O parameters ---------------------------------------------
+userParam11 = 0         # whether to read inflow2d.ini (2d) for restasting
+userParam12 = 0         # whether to read bedform.ini for restasting
+userParam13 = 500000    # output frequency for spanwise-time-averaged statistics. If <0, means.ini will be read for restarting
+userParam14 = 500000    # step for which means over time will start being accumated. If <0, means will only be spanwise-averaged.
+userParam15 = 100000    # output frequency for spanwise-averaged vel-temp file
+userParam16 = 100       # output frequency for bedform file. If 0 or less, bedform calculations won't be done
+
+
+[MESH]
+numberOfBCFields = 2
+writeToFieldFile = yes
+
+
+[PROBLEMTYPE]
+variableProperties = yes
+equation = incompNS
+
+[PRESSURE]
+#preconditioner = semg_amg
+residualTol = 1e-4 
+writeToFieldFile = no
+
+[VELOCITY]
+residualTol = 1e-6 
+density = 1.
+viscosity = -180
+
+[TEMPERATURE]
+rhoCp = 1.
+conductivity = -180
+residualTol = 1e-6 
