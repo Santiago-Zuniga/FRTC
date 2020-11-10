@@ -41,7 +41,7 @@ c - mesh and buffer zones dimensions
 #define PI (4.*atan(1.))
 #define nelsides ((lelx-nelxin)/2)       
 #define YLEN uparam(8)
-#define ZLEN (uparam(9)*PI)
+#define ZLEN (uparam(9))
 #define NUMBER_ELEMENTS_X lelx
 #define NUMBER_ELEMENTS_Y lely
 #define NUMBER_ELEMENTS_Z lelz
@@ -51,7 +51,7 @@ c - mesh and buffer zones dimensions
 #define ratiozh 3.0        /*fraction of domain before the break*/
 #define nhighz 0           /*number of high resolution elements near the break*/
 #define ratio_top_uy 1.0   /*ratio of the velocity at the top of the domain between zones, if a preset velocity is used*/
-#define nelyint 13         /*number of elements in the higher resolution zone*/
+#define nelyint 19         /*number of elements in the higher resolution zone*/
 #define hint 6             /*height of heigher resolution zone*/
 
 c - Iflow dimensions
@@ -1535,13 +1535,59 @@ C       A2=0
 c
       nelytot = NUMBER_ELEMENTS_Y
 
-      delyi =hf/nelyin
+C       delyi =hf/nelyin
+C       rrleny = nelytot*delyi 
+C       rrlenyint = nelyint*delyi
+C       hfh=hf/2.0
+C       hfint = rrlenyint
+C       amp=ASINH(((hint-hf)/hint)*SINH(-3.25))/((hf/rrlenyint-1.0)*3.25)
+C       sp=3.25
+
+
+C c     vertical grid spacing      
+C       do i=1,n
+C         yc(i,1)  = rrleny * yc(i,1) 
+C         y=yc(i,1)
+
+C         if ((AINT(y*100.0)/100.0).le.hfh) then
+C           yc(i,1) = (-1)*(1-SINH(sp*y)/SINH(sp))+1
+C         elseif ((AINT(y*100.0)/100.0).le.hf) then
+C           yc(i,1) = (1)*(1 - SINH(sp*(2-y))/SINH(sp))+1
+C         elseif ((AINT(y*100.0)/100.0).le.hfint) then
+C           y = y / rrlenyint
+C           yc(i,1)= (hint*SINH(3.25*amp*(hf/rrlenyint-y))/SINH(-3.25))+2
+C         elseif ((AINT(y*100.0)/100.0).gt.hfint) then
+C               yc(i,1)=(y-hfint)*(YLEN-hint)/(rrleny-hfint)+hint
+C C             y=(y-hfint)/(rrleny-hfint)
+C C             yc(i,1)=y*(YLEN-hfint)+hfint
+C         endif
+C         xc(i,1) =  xlen_inflow*(2.0*nelsides/(1.0*nelxin)+1) * xc(i,1)
+C         zc(i,1) = ZLEN * zc(i,1)
+C       enddo
+
+C       if (nhighz.ne.0) then
+C         deltz1=ZLEN/(1.0*NUMBER_ELEMENTS_Z-1.0*nhighz/2.0)
+C         deltz0=ZLEN/NUMBER_ELEMENTS_Z
+C         do i=1,n
+C           z=zc(i,1)
+C           if ((AINT(z*100.0)/100.0).le.(deltz0*(nz_break-nhighz/2)))then
+C             zc(i,1)=z*(zh1-nhighz/4*deltz1)/((nz_break-nhighz/2)*deltz0)
+C           elseif((AINT(z*100.0)/100.0).le.(deltz0*(nz_break+nhighz/2)))
+C      &          then
+C             zc(i,1)=0.5*(deltz1/deltz0)*(z-(nz_break-nhighz/2)
+C      &              *deltz0)+zh1-nhighz*deltz1/4
+C           else
+C             zc(i,1)=(ZLEN-zh1+nhighz*deltz0/4)/
+C      &              (ZLEN-(nhighz*deltz1/2))*
+C      &              (z-(nz_break+nhighz/2)*deltz0)
+C      &              +zh1+nhighz*deltz1/4
+C           endif
+C         enddo
+C       endif
+
+      delyi =hint/nelyint
       rrleny = nelytot*delyi 
-      rrlenyint = nelyint*delyi
-      hfh=hf/2.0
-      hfint = rrlenyint
-      amp=ASINH(((hint-hf)/hint)*SINH(-3.25))/((hf/rrlenyint-1.0)*3.25)
-      sp=3.25
+      sp=2.5
 
 
 c     vertical grid spacing      
@@ -1549,17 +1595,10 @@ c     vertical grid spacing
         yc(i,1)  = rrleny * yc(i,1) 
         y=yc(i,1)
 
-        if ((AINT(y*100.0)/100.0).le.hfh) then
-          yc(i,1) = (-1)*(1-SINH(sp*y)/SINH(sp))+1
-        elseif ((AINT(y*100.0)/100.0).le.hf) then
-          yc(i,1) = (1)*(1 - SINH(sp*(2-y))/SINH(sp))+1
-        elseif ((AINT(y*100.0)/100.0).le.hfint) then
-          y = y / rrlenyint
-          yc(i,1)= (hint*SINH(3.25*amp*(hf/rrlenyint-y))/SINH(-3.25))+2
-        elseif ((AINT(y*100.0)/100.0).gt.hfint) then
-              yc(i,1)=(y-hfint)*(YLEN-hint)/(rrleny-hfint)+hint
-C             y=(y-hfint)/(rrleny-hfint)
-C             yc(i,1)=y*(YLEN-hfint)+hfint
+        if ((AINT(y*100.0)/100.0).le.hint) then
+          yc(i,1) = hint*(SINH(sp*y/hint)/SINH(sp))
+        else
+          yc(i,1) = hint+(y-hint)(YLEN-hint)/(rrleny-hint)
         endif
         xc(i,1) =  xlen_inflow*(2.0*nelsides/(1.0*nelxin)+1) * xc(i,1)
         zc(i,1) = ZLEN * zc(i,1)
@@ -1584,6 +1623,7 @@ C             yc(i,1)=y*(YLEN-hfint)+hfint
           endif
         enddo
       endif
+
 
 c     sloping
       if (MESH_SLOPE) then
