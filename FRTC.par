@@ -1,46 +1,54 @@
 #
-# nek parameter file for Spatially Evolving TCs
+# parameter file for Spatially Evolving TCs
 #
 
 [GENERAL]
-#startFrom = FRONT.ini 
+startFrom = FRTC.ini time=0.0
 stopAt = endTime
-endTime = 4.2
+endTime = 200
 #stopAt = numSteps
-#numSteps = 100
+#numSteps = 2
 
-dt = 1.5e-3
-timeStepper = bdf2
+dt = 3.0e-3
+timeStepper = bdf3
 extrapolation = OIFS
-variableDt = no
-targetCFL = 2.5
+#variableDt = no
+variableDt = yes
+targetCFL = 3.0
 
 writeControl = runTime
-writeInterval = 1.5
+#writeControl = timeStep
+writeInterval = 10
+
+#filtering = hpfrt
+#filterWeight = 10
+##filterCutoffRatio = 0.0
+#filterModes = 4
+
 
 filtering = explicit
-filterWeight = 0.95
-filterModes=3
-#filterCutoffRatio = 0.65
+filterWeight = 0.05
+#filterModes = 2
+filterCutoffRatio = 0.9
 
 # Simulation parameters ----------------------------------------
-userParam01 = 20        # Ri_tau
-userParam02 = 20        # Ri_tau2 (downstream from the break in slope). The mesh is not deformed is if it's equal to Ri_tau
-userParam03 = 0.01      # Settling velocity, absolute value
-userParam04 = 0.001     # Nondimensional particle diameter
-userParam05 = -0.1      # u_target for top PML, positive. If negative, a constant velocity will be used instead of a PML. If 0, it uses the average entrainment velocity
-userParam06 = 2         # Bottom concentration BC. 0->depositional 1->bypass 2->Erosion
-userParam07 = 5         # duration of inflow flow
+userParam01 = 200      # Ri_tau
+userParam02 = 200       # Ri_tau2 (downstream from the break in slope). The mesh is not deformed is if it's equal to Ri_tau
+userParam03 = 0.2     # Settling velocity, absolute value
+userParam04 = 0.002     # Nondimensional particle diameter
+userParam05 = 0.10     # u_target for top PML, positive. If negative, a constant velocity will be used instead of a PML.
+userParam06 = 0         # Bottom concentration BC. 0->depositional 1->bypass 2->Erosion
+userParam07 = 99999         # duration of inflow flow
 userParam08 = 20.0      # y lenght (height)
-userParam09 = 34.0	    # z lenght / pi
+userParam09 = 96.0	# z lenght/pi
 
 # I/O parameters ---------------------------------------------
-userParam11 = 0         # whether to read inflow2d.ini (2d) for restasting
+userParam11 = 0        # whether to read inflow2d.ini (2d) for restasting
 userParam12 = 0         # whether to read bedform.ini for restasting
-userParam13 = 500000    # output frequency for spanwise-time-averaged statistics. If <0, means.ini will be read for restarting
-userParam14 = 500000    # step for which means over time will start being accumated. If <0, means will only be spanwise-averaged.
-userParam15 = 100000    # output frequency for spanwise-averaged vel-temp file
-userParam16 = 100       # output frequency for bedform file. If 0 or less, bedform calculations won't be done
+userParam13 = 10    # output frequency for spanwise-time-averaged statistics. If <0, means.ini will be read for restarting
+userParam14 = 100    # time for which means over time will start being accumated. If <0, means will only be spanwise-averaged.
+userParam15 = 5.0    # output frequency for spanwise-averaged vel-temp file
+userParam16 = -99       # output frequency for bedform file. If 0 or less, bedform calculations won't be done
 
 
 [MESH]
@@ -66,3 +74,9 @@ viscosity = -180
 rhoCp = 1.
 conductivity = -180
 residualTol = 1e-6 
+
+#[SCALAR01]
+#density = 1.
+#diffusivity = -180
+#residualTol = 1e-6 
+
