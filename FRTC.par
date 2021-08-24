@@ -33,12 +33,9 @@ filterCutoffRatio = 0.9
 
 # Simulation parameters ----------------------------------------
 userParam01 = 200      # Ri_tau
-userParam02 = 200       # Ri_tau2 (downstream from the break in slope). The mesh is not deformed is if it's equal to Ri_tau
-userParam03 = 0.2     # Settling velocity, absolute value
-userParam04 = 0.002     # Nondimensional particle diameter
-userParam05 = 0.10     # u_target for top PML, positive. If negative, a constant velocity will be used instead of a PML.
-userParam06 = 0         # Bottom concentration BC. 0->depositional 1->bypass 2->Erosion
-userParam07 = 99999         # duration of inflow flow
+userParam02 = 0.0     # u_target for top PML, positive. If negative, a constant velocity will be used instead of a PML. If 0, Dong
+userParam06 = 0         # Bottom concentration BC. 0->depositional 1->bypass 2->Erosion. Use 0 if Vs = 0
+userParam07 = 99999         # duration of inflow flow. If the release will be infinite, use values larger than 100
 userParam08 = 20.0      # y lenght (height)
 userParam09 = 96.0	# z lenght/pi
 
