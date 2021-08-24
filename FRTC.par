@@ -34,8 +34,8 @@ filterCutoffRatio = 0.9
 # Simulation parameters ----------------------------------------
 userParam01 = 200      # Ri_tau
 userParam02 = 0.0     # u_target for top PML, positive. If negative, a constant velocity will be used instead of a PML. If 0, Dong
-userParam06 = 0         # Bottom concentration BC. 0->depositional 1->bypass 2->Erosion. Use 0 if Vs = 0
-userParam07 = 99999         # duration of inflow flow. If the release will be infinite, use values larger than 100
+userParam03 = 0         # Bottom concentration BC. 0->depositional 1->bypass 2->Erosion. Use 0 if Vs = 0
+userParam04 = 99999         # duration of inflow flow
 userParam08 = 20.0      # y lenght (height)
 userParam09 = 96.0	# z lenght/pi
 
@@ -43,7 +43,7 @@ userParam09 = 96.0	# z lenght/pi
 userParam11 = 0        # whether to read inflow2d.ini (2d) for restasting
 userParam12 = 0         # whether to read bedform.ini for restasting
 userParam13 = 10    # output frequency for spanwise-time-averaged statistics. If <0, means.ini will be read for restarting
-userParam14 = 100    # time for which means over time will start being accumated. If <0, means will only be spanwise-averaged.
+userParam14 = 50    # time for which means over time will start being accumated. If <0, means will only be spanwise-averaged.
 userParam15 = 5.0    # output frequency for spanwise-averaged vel-temp file
 userParam16 = -99       # output frequency for bedform file. If 0 or less, bedform calculations won't be done
 
