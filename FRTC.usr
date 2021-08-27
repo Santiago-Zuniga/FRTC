@@ -705,9 +705,10 @@ c
         call inlet_plane(xinlet,xm1,w_inlet, 0.0)
         call yslab(y_slab,ym1,wslab,n_slab,nelyin)
 
-        call read_inflow_sem(in_dns,in_npoints,in_bulk)
+        call read_inflow_sem(in_dns,in_npoints,in_bulk,si_eddies)
         if (nid.eq.0) write(*,*) 'Inflow points=',int(in_npoints),
-     &                         ', bulk velocity=',in_bulk
+     &                         ', bulk velocity=',in_bulk , 
+     &                         ', k^(3/2)/diss=',si_eddies 
 C       call y_line(yline,ym1,w1t,w2t)
          call interp_inflow_sem(in_dns,int(in_npoints)
      &  ,y_slab,in_dns_interp,n_eddies,si_eddies,yinlet)
@@ -3220,7 +3221,7 @@ C       now z
       return
       end
 
-      subroutine read_inflow_sem(in_dns,inpoints,in_bulk)
+      subroutine read_inflow_sem(in_dns,inpoints,in_bulk,si_eddies)
       include 'SIZE'
       include 'TOTAL'
       include 'ZPER'
@@ -3228,7 +3229,7 @@ C       include 'PARALLEL'
 
       real in_dns(600,15)
 C       integer inpoints
-      real in_bulk,inpoints
+      real in_bulk,inpoints,si_eddies
       integer i,j 
       real dum(600,15)
       real rdum
@@ -3238,6 +3239,7 @@ C       integer inpoints
         open(53,file=trim(path)//'inflow.dat',status='old')
         read(53,*) inpoints
         read(53,*) in_bulk
+        read(53,*) si_eddies
 c     y, u_m, v_m, w_m, t_m, a11, a21, a22, a31, a32, a33, a41, a42, a43, a44 
         do i=1,int(inpoints)
           read(53,*) (in_dns(i,j),j=1,15)
@@ -3251,6 +3253,8 @@ c     y, u_m, v_m, w_m, t_m, a11, a21, a22, a31, a32, a33, a41, a42, a43, a44
 C       call bcast(npoints,isize)
       rdum=0.0
       call gop(in_bulk,rdum,'+  ',1)
+      rdum=0.0
+      call gop(si_eddies,rdum,'+  ',1)
 
       return
       end
@@ -3305,7 +3309,8 @@ C       call bcast(npoints,isize)
       do i=2,ny
         if (yline(i)-yline(i-1).gt.dumr) dumr=yline(i)-yline(i-1)
       enddo
-      si_eddies=dumr/0.5                    !<--------------------Change
+C       si_eddies=dumr/0.5                    !<--------------------Change
+      si_eddies = max(si_eddies, dumr)
       dumr=(xlen_inflow+2.0*si_eddies)*
      &      (hf+2.0*si_eddies)*2.0*si_eddies
       n_eddies=min(int(dumr/(si_eddies**3)),5000)
