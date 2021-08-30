@@ -74,7 +74,7 @@ c - flags    -----------------------------------------------------------
 #define IF_SMAG .TRUE.                     /*Whether eddy diffusivity is used*/
 #define inflow_flag .FALSE.                /*Whether to inflow will be finite*/
 #define ODong_flag .TRUE.                  /*Whether to use Dong BC at the outlet. If not, a PML will be used*/
-#define IF_ICSEM   .TRUE.                  /*Whether copy inlet in the domain for IC*/
+#define IF_ICSEM   .FALSE.                  /*Whether copy inlet in the domain for IC*/
 
 
 
