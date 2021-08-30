@@ -1,4 +1,5 @@
-c- Spatially evolving turbidity currents, both in periodic channels or canyon-fan transitions 
+c- Spatially evolving turbidity currents in periodic channels
+c- Inflow: Synthetic eddy method (Jarrin 2006) 
 c- Simulation parameters -----------------------------------------------------------
 #define RITAU uparam(1)                         /* Ri_tau */
 #define UTARGET uparam(2)                       /* u_target for top PML, positive */ 
@@ -53,7 +54,7 @@ c - Iflow dimensions
 
 c - Sediment properties
 #define def_RE_P  (/0.7829/)            /*Particle Reynolds numbers*/
-#define def_Vs  (/0.00/)        /*Settling velocities*/
+#define def_Vs  (/0.0/)        /*Settling velocities*/
 #define def_alpha  (/1.0/)        /*alpha*/
 #define def_gamma  (/1.0/)           /*Inlet volume fractions*/
 #define Cv 8.0e-2                        /*Volume mean concentration*/
@@ -70,10 +71,10 @@ c - flags    -----------------------------------------------------------
 #define IF_EROS .TRUE.                    /*Whether to include sediment entrainment (-E_s) in Exner equation.*/    
 #define IF_DEPO .TRUE.                    /*Whether to include sediment deposition (C_b) in Exner equation.*/    
 #define IF_HIS .FALSE.                     /*Whether to save history points*/
-#define IF_SEM .TRUE.                      /*Whether to generate inflow conditions using SEM*/
 #define IF_SMAG .TRUE.                     /*Whether eddy diffusivity is used*/
-#define inflow_flag .FALSE.       /*Whether to inflow will be finite*/
-#define ODong_flag .TRUE.       /*Whether to use Dong BC at the outlet. If not, a PML will be used*/
+#define inflow_flag .FALSE.                /*Whether to inflow will be finite*/
+#define ODong_flag .TRUE.                  /*Whether to use Dong BC at the outlet. If not, a PML will be used*/
+#define IF_ICSEM   .TRUE.                  /*Whether copy inlet in the domain for IC*/
 
 
 
@@ -620,10 +621,12 @@ c     ############################################################
         endif
         write(*,*)'+Input parameters:'
         write(*,*)'Re_tau = ',RE_TAU
-        write(*,*)'Ri_tau 1 = ',RITAU
+        write(*,*)'Ri_tau = ',RITAU
         write(*,*)'Duration of inflow flow = ', time_inflow 
+        write(*,*)'Settling velocity(ies) = ', (V_sp(i),i=1,ldimt)
         write(*,*)'+Derived parameters:'         
         write(*,*)'theta 1 (degrees)= ',180*atan(1/RITAU)/PI
+        write(*,*)'**********END OF SIMULATION PARAMETERS**************'
       endif
 
 
@@ -679,18 +682,6 @@ C          ifpo=.true.
 
       endif
 
-c     ############################################################
-c
-c     INTERPOLATE EXTERNAL INFLOW FILE AND SETS INFLOW PLANE
-c
-c     This code is made for a mesh composed of only one box.
-c     Computes the inlet boundary condition for the next time step
-c     interpolating the solution for a TC with fixed mean 
-c     streamwise velocity and concentration
-      if (istep.eq.0) then
-            call yslab(y_slab,ym1,wslab,n_slab,nelyin)
-      endif
-
       theta=0.0
 
       dtimestep = abs(dt)
@@ -699,7 +690,9 @@ c
 c     INTERPOLATE INLET DATA AND SET INFLOW CONDITION USING
 C     THE SYNTHETIC EDDY METHOD (Jarrin 2006)
 c
+
       if (istep.eq.0) then
+        call yslab(y_slab,ym1,wslab,n_slab,nelyin)
 
         call inlet_plane(yinlet,ym1,w_inlet, 0.0)
         call inlet_plane(xinlet,xm1,w_inlet, 0.0)
@@ -714,10 +707,16 @@ C       call y_line(yline,ym1,w1t,w2t)
      &  ,y_slab,in_dns_interp,n_eddies,si_eddies,yinlet)
 
       endif
-      
+
       call gen_inflow_sem(vxin_pl,vyin_pl,vzin_pl,tin_pl
      &           ,n_eddies,si_eddies,in_bulk,in_dns_interp,
      &            dtimestep,xinlet,yinlet)
+    
+      if (istep.eq.0 .and. IF_ICSEM) then
+          call set_ic_sem()
+      endif
+
+    
 
 
 c     ############################################################
@@ -3612,8 +3611,8 @@ c     This sets the IC as using inlet data
       include 'ZPER'  ! for nelx,nely,nelz
 
       integer e,eg,ex,ey,ez, idum
-      real ydum, xdum, zdum
-      real C, k, kx, ky, alpha, beta
+      real ydum, xdum, zdum, yp, cc, kk
+      real kx, ky, alpha, beta, eps, dum
       
       parameter(nel_slab=nelxin*nelyin)
       common /inflow_pl/ vxin_pl(lx1,ly1,nel_slab)
@@ -3623,12 +3622,12 @@ c     This sets the IC as using inlet data
 
 
 
-      eps = 5e-2
+      eps = 1e-1
       kx  = 23
       kz  = 13
 
       alpha = kx * 2*PI/ZLEN
-      beta  = kz * 2*PI/xlen
+      beta  = kz * 2*PI/XLEN
 
       do e=1,nelt
          eg = lglel(e)
@@ -3640,19 +3639,18 @@ c     This sets the IC as using inlet data
                 zdum = zm1(i,j,k,e)
                 xdum = xm1(i,j,k,e)
                 idum = (ey-1)*nelxin + ex
-                if (idum.lt.nel_slab) then
-                  vx(i,j,k,e) = vxin_pl(i,j,idum) - 
-     &                 eps*alpha * cos(alpha*zdum)*sin(beta*xdum)
-                  vy(i,j,k,e) = vyin_pl(i,j,idum) + 
-     &                 eps* sin(alpha*zdum)*sin(beta*xdum)
-                  vz(i,j,k,e) = vzin_pl(i,j,idum) + 
-     &                 eps*beta  * sin(alpha*zdum)*cos(beta*xdum) 
+                if (ydum .le. hf) then
+                  vx(i,j,k,e) =-eps*alpha*cos(alpha*zdum)*sin(beta*xdum)
+                  vy(i,j,k,e) = eps  * sin(alpha*zdum)*sin(beta*xdum)
+                  vz(i,j,k,e) = vzin_pl(i,j,idum) 
+     &                + eps*beta  * sin(alpha*zdum)*cos(beta*xdum) 
                   t(i,j,k,e,1) = tin_pl(i,j,idum)
-                endif !(idum.lt.nel_slab)
+                endif !(ydum .le. hf)
               enddo
             enddo
           enddo
       enddo
+
 
       return
       end
