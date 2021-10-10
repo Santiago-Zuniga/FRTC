@@ -11,7 +11,8 @@ c- Simulation parameters -------------------------------------------------------
 
 c- Increased viscosity outflow parameters ----------------------------------
 #define VISCFAC 5.0
-#define ZBUFF (ZLEN-5.0*PI)
+#define B_OUTLET 30.0                      /*Lenght of the bottom outlet. Only used if greater than 0*/
+#define ZBUFF (ZLEN-50)
 #define YBUFF (YLEN-4.)
 
 c- Exner equation parameters -----------------------------------------------
@@ -73,9 +74,8 @@ c - flags    -----------------------------------------------------------
 #define IF_HIS .FALSE.                     /*Whether to save history points*/
 #define IF_SMAG .TRUE.                     /*Whether eddy diffusivity is used*/
 #define inflow_flag .FALSE.                /*Whether to inflow will be finite*/
-#define ODong_flag .TRUE.                  /*Whether to use Dong BC at the outlet. If not, a PML will be used*/
+#define ODong_flag .FALSE.                  /*Whether to use Dong BC at the outlet. If not, a PML will be used*/
 #define IF_ICSEM   .FALSE.                  /*Whether copy inlet in the domain for IC*/
-
 
 
       subroutine uservp (ix,iy,iz,eg)
@@ -135,7 +135,7 @@ c     Sets low Re number in range [zout;lenz]
         dumr = YLEN - 2.0
         tany = (1. + tanh((y - dumr)/0.5))/2.0
         if (tany .gt. 1e-4) then
-           udiff = udiff + udiff * tany *5.0
+           udiff = udiff + udiff * tany *10.0
         endif
       endif
 
@@ -181,7 +181,7 @@ c     MESH VARIABLES
       ffx = conc*egrav(1)
       ffz = conc*egrav(3)
 
-      if (inflow_flag) then
+      if (inflow_flag .or. B_OUTLET .gt. 0.0) then
          ffy = conc*egrav(2)
       else
         ffy = (conc - tempbar(iy,ey))*egrav(2) !substract hydrostatic pressure
@@ -240,7 +240,7 @@ c     Top buffer zone
 c     ###################
 
 c     Outflow buffer zone
-      if(.not. ODong_flag) then
+      if(.not. ODong_flag .and. B_OUTLET .le. 0.0) then
           sigma2(1) = 0.0
           sigma2(2) = 0.0
           sigma2(3) = 0.0
@@ -275,6 +275,38 @@ C      &      .and.y.lt.yy.and.vzout.lt.0.0) then
             ffx = ffx - sigma2(1) * (ux - umean2(1))
             ffy = ffy - sigma2(2) * (uy - umean2(2))
             ffz = ffz - sigma2(3) * (uz - umean2(3))
+          endif
+      endif
+
+       if(B_OUTLET .gt. 0.0) then
+          sigma2(1) = 0.0
+          sigma2(2) = 10.0
+          sigma2(3) = 10.0
+
+          umean2(1) = 0.0                           !<-----------------CHANGE! 
+          umean2(2) = -0.1                           !<-----------------CHANGE! 
+          umean2(3) = 1.0                           !<-----------------CHANGE!
+
+          beta = 2.0   ! tanh shape factor on z
+          beta2 = 2.0   ! tanh shape factor on y
+
+          dumr = ZLEN - B_OUTLET + 0.0 !outflow start position
+
+          
+          tanz = (1. + tanh((z - (dumr + 10.))/beta))/2.0
+          tany = (1. + tanh(-1.*(y - YBUFF)/beta2))/2.0
+          
+          sigma2(1) = sigma2(1) * tanz * tany
+          sigma2(2) = sigma2(2) * tanz * tany
+          sigma2(3) = sigma2(3) * tanz * tany
+
+          if (tanz.gt.1e-4) then
+            if (uy.gt.0.0) then
+              ffy = ffy - sigma2(2) * (uy - umean2(2))
+            endif
+            if (uz.lt.0.0) then
+              ffz = ffz - sigma2(3) * (uz - umean2(3))
+            endif
           endif
       endif
 
@@ -619,6 +651,7 @@ c     ############################################################
         elseif(if_pml.eq.2) then
           write(*,*)'Top BC : Dong BC'
         endif
+        if (B_OUTLET .gt. 0.0) write(*,*)'Outlet type : Bottom outlet'
         write(*,*)'+Input parameters:'
         write(*,*)'Re_tau = ',RE_TAU
         write(*,*)'Ri_tau = ',RITAU
@@ -629,7 +662,16 @@ c     ############################################################
         write(*,*)'**********END OF SIMULATION PARAMETERS**************'
       endif
 
-
+C       if (istep.eq.0) then
+C         do i = 1, n
+C         if (zm1(i,1,1,1).gt.((ZLEN-B_OUTLET) + 5.0)) then
+C             vx(i,1,1,1) = 0.0
+C             vy(i,1,1,1) = 0.0
+C             vz(i,1,1,1) = 0.0
+C             t(i,1,1,1,1) = 0.0
+C         endif
+C        enddo
+C       endif
 c
 c     ############################################################
 c     Settling velocity of sediment (absolute value)
@@ -763,7 +805,7 @@ c     ############################################################
 c     ############################################################
 c     COMPUTE HYDROSTATIC PRESSURE (AVERAGE OF TEMP(y))
 c     FOR REFERENCE ON THIS TERM SEE CANTERO 2009 JGR
-      if (.not. inflow_flag) then
+      if (.not. inflow_flag .and. B_OUTLET .le. 0.0) then
         call copy(wo3,t(1,1,1,1,1),n)
         do ips=1,npscal
            call add2(wo3,t(1,1,1,1,ips+1),n)
@@ -775,7 +817,8 @@ c     FOR REFERENCE ON THIS TERM SEE CANTERO 2009 JGR
 
       maxvel = glmax(vz, size(vz))
 
-      if (.not. ODong_flag) call vz_outflow(vzout_pl,vzout_pldum) !save outflow plane
+      if (.not. ODong_flag .and. B_OUTLET .le. 0.0) 
+     &  call vz_outflow(vzout_pl,vzout_pldum) !save outflow plane
 
 
 c      ############################################################
@@ -1437,8 +1480,9 @@ c-----------------------------------------------------------------------
         if_pml=0
       endif
 
-C       A1=0
-C       A2=0
+      theta1 = atan(1/RITAU)
+      A1 = B_OUTLET / RITAU
+
       n=8*nelt
 c
       nelytot = NUMBER_ELEMENTS_Y
@@ -1473,6 +1517,18 @@ C             yc(i,1)=y*(YLEN-hfint)+hfint
         zc(i,1) = ZLEN * zc(i,1)
       enddo
 
+      if (B_OUTLET .gt. 0.0) then
+      if(nid.eq.0) write(*,*) 'Deforming mesh for bottom outlet.....'
+      do i=1,n
+        y=yc(i,1)
+        z=zc(i,1)
+          if ((AINT(z*100.0)/100.0) .gt. (ZLEN-B_OUTLET) ) then
+            A2 = (z - (ZLEN-B_OUTLET)) / B_OUTLET
+            A2 = A2 * (1.0- y / YLEN)
+            yc(i,1) = y + A1 * A2
+          endif
+      enddo
+      endif
 
 
       return
@@ -1533,6 +1589,27 @@ C             yc(i,1)=y*(YLEN-hfint)+hfint
           ifc=6 !right face, if it was generated by genbox
           do iel=1,nelt
              if (cbc(ifc,iel,1) .eq. 'O  ') cbc(ifc,iel,1) = 'o  '
+          enddo
+      endif
+
+
+      if (B_OUTLET .gt. 0.0)then  !change outlet BC from O to w
+          ifc=6 !right face, if it was generated by genbox
+          do iel=1,nelt
+             if (cbc(ifc,iel,1) .eq. 'O  ') cbc(ifc,iel,1) = 'SYM'
+             if (cbc(ifc,iel,2) .eq. 'O  ') cbc(ifc,iel,2) = 'I  '
+          enddo
+      endif
+
+      if (B_OUTLET .gt. 0.0)then  !change outlet BC from O to w
+          ifc=1 !bottom face, if it was generated by genbox
+          do iel=1,nelt
+            if (zm1(1,1,1,iel).gt.(ZLEN-B_OUTLET))then   
+                 if (cbc(ifc,iel,1) .eq. 'W  ') then
+                    cbc(ifc,iel,1) = 'O  '  
+                    cbc(ifc,iel,2) = 'O  '
+                 endif
+            endif
           enddo
       endif
 
